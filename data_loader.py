@@ -53,5 +53,7 @@ for t in TICKERS:
         print(f"{t}: {len(df):,} points")
 
 full = pd.concat(all_dfs, ignore_index=True)
-full.to_parquet("prize_dataset.parquet", compression='zstd')
+full['z'] = pd.to_numeric(full['z'], errors='coerce')
+full = full.dropna(subset=['z', 'sigma'])
+full.to_parquet("prize_dataset.parquet")
 print(f"\nPrize dataset ready — {len(full):,} rows")
