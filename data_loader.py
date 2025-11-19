@@ -1,11 +1,12 @@
 # data_loader.py — Exact replication of Wilmott q-variance methodology (July 2025)
-# Fixed for Python 3.12: No FutureWarnings, clean dtypes, robust to data gaps
-# Run once: python data_loader.py → generates prize_dataset.parquet (~70K rows for 8 tickers)
+# Bulletproof for Python 3.12: No FutureWarnings, handles sparse data, generates valid rows
+# Run once: python data_loader.py → prize_dataset.parquet (~70K rows for 8 tickers)
 
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import date  # For date() if needed
 
 # Horizons exactly as in the article (p.36)
 HORIZONS_DAYS = [5, 10, 20, 40, 80, 160, 250]
@@ -28,6 +29,7 @@ def download_ticker(ticker: str, start="1950-01-01", end="2025-11-19") -> pd.Ser
 def compute_qvar_for_ticker(log_returns: pd.Series, ticker: str) -> pd.DataFrame:
     """Compute z and sigma for all horizons T (non-overlapping windows, Wilmott p.36)"""
     if len(log_returns) < min(HORIZONS_DAYS):
+        print(f"Skipping {ticker}: Insufficient data ({len(log_returns)} < {min(HORIZONS_DAYS)})")
         return pd.DataFrame()
     
     results = []
@@ -36,10 +38,12 @@ def compute_qvar_for_ticker(log_returns: pd.Series, ticker: str) -> pd.DataFrame
     for T_days in HORIZONS_DAYS:
         # Non-overlapping: Step by T_days using iloc for index safety
         step = T_days
+        valid_windows = 0
         for i in range(0, len(log_returns) - T_days + 1, step):
             window = log_returns.iloc[i:i + T_days]
             if len(window) < T_days * 0.8:  # Tolerate minor gaps
                 continue
+            valid_windows += 1
             
             # Total log return x over window
             x = window.sum()
@@ -54,29 +58,41 @@ def compute_qvar_for_ticker(log_returns: pd.Series, ticker: str) -> pd.DataFrame
                 'ticker': ticker,
                 'date': window.index[0].date(),
                 'T': T_days,
-                'x': x,
-                'z_raw': z_raw,
-                'sigma': sigma
+                'x': float(x),  # Force float early
+                'z_raw': float(z_raw) if not np.isnan(z_raw) else np.nan,
+                'sigma': float(sigma) if not np.isnan(sigma) else np.nan
             })
+        print(f"   T={T_days}: {valid_windows} valid windows")
     
     if not results:
+        print(f"Skipping {ticker}: No valid windows")
         return pd.DataFrame()
     
     df = pd.DataFrame(results)
+    df['z'] = np.nan  # Pre-allocate z column as float
     
-    # Global de-meaning per T: Fix FutureWarning by extracting scalar mean
+    # Global de-meaning per T: Skip if <10 points (avoids NaN mean), use .item() for scalar
     for T in HORIZONS_DAYS:
         mask = df['T'] == T
-        if mask.sum() > 0:
-            z_raw_series = df.loc[mask, 'z_raw']
-            mean_z = float(z_raw_series.mean())  # Scalar float — no deprecation warning
-            df.loc[mask, 'z'] = z_raw_series - mean_z
-            # Force numeric immediately (coerce NaNs/objects)
-            df.loc[mask, 'z'] = pd.to_numeric(df.loc[mask, 'z'], errors='coerce')
+        if mask.sum() < 10:  # Threshold for reliable mean
+            print(f"   Skipping de-mean for T={T} ({mask.sum()} points)")
+            df.loc[mask, 'z'] = df.loc[mask, 'z_raw']
+            continue
+        z_raw_series = df.loc[mask, 'z_raw']
+        mean_z_series = z_raw_series.mean()
+        if pd.isna(mean_z_series):
+            print(f"   NaN mean for T={T} — using raw z")
+            df.loc[mask, 'z'] = z_raw_series
+            continue
+        mean_z = mean_z_series.item()  # .item() extracts scalar float — kills FutureWarning
+        df.loc[mask, 'z'] = z_raw_series - mean_z
+        # Force numeric
+        df.loc[mask, 'z'] = pd.to_numeric(df.loc[mask, 'z'], errors='coerce')
     
-    # Drop invalid rows early (NaN z/sigma from gaps)
+    # Drop invalid rows *after* all calcs (now z is filled)
     df = df.dropna(subset=['z', 'sigma'])
     
+    print(f"   Final for {ticker}: {len(df):,} points after drops")
     return df[['ticker', 'date', 'T', 'z', 'sigma']]
 
 def load_full_dataset(tickers: list, cache_dir="cache") -> pd.DataFrame:
@@ -90,50 +106,57 @@ def load_full_dataset(tickers: list, cache_dir="cache") -> pd.DataFrame:
             try:
                 df = pd.read_parquet(cache_file)
                 print(f"Loaded cached {ticker}: {len(df):,} points")
-            except:
+            except Exception as e:
+                print(f"Cache read failed for {ticker}: {e} — regenerating")
                 df = pd.DataFrame()
         else:
+            df = pd.DataFrame()
+        
+        if df.empty:
             print(f"Processing {ticker}...")
             log_ret = download_ticker(ticker)
             if len(log_ret) > 1000:  # Skip tiny histories
                 df = compute_qvar_for_ticker(log_ret, ticker)
                 if not df.empty:
-                    df.to_parquet(cache_file)  # Per-ticker save (no compression issues)
+                    df.to_parquet(cache_file)  # Per-ticker save
                     print(f"   Cached {ticker}: {len(df):,} points")
             else:
-                df = pd.DataFrame()
+                print(f"   Skipping {ticker}: Too few returns ({len(log_ret)})")
         
         if not df.empty:
             all_dfs.append(df)
     
     if not all_dfs:
-        print("No valid data generated")
+        print("No valid data generated — check yfinance (pip install yfinance --upgrade)")
         return pd.DataFrame()
     
     full_df = pd.concat(all_dfs, ignore_index=True)
     
-    # Final dtype cleanup (prevents ArrowInvalid)
-    full_df['z'] = pd.to_numeric(full_df['z'], errors='coerce')
-    full_df['sigma'] = pd.to_numeric(full_df['sigma'], errors='coerce')
+    # Final dtype cleanup
+    numeric_cols = ['z', 'sigma', 'x']
+    for col in numeric_cols:
+        if col in full_df.columns:
+            full_df[col] = pd.to_numeric(full_df[col], errors='coerce')
     full_df = full_df.dropna(subset=['z', 'sigma'])
     
-    # Save full dataset (no compression for safety)
+    # Save full dataset
     full_df.to_parquet("prize_dataset.parquet")
     print(f"\nTotal dataset ready: {len(full_df):,} rows")
-    print("Sample dtypes: z=float64, sigma=float64")
+    print(full_df.dtypes)
+    print("\nSample head:\n", full_df.head())
     
     return full_df
 
-# Wilmott article tickers (p.37) — start small, expand later
+# Wilmott article tickers (p.37) — start small
 PRIZE_TICKERS = [
     "^GSPC", "^DJI", "^FTSE", "AAPL", "MSFT", "AMZN", "BTC-USD", "GLD"
 ]
 
 if __name__ == "__main__":
-    # Generate dataset (runs ~2–5 min locally)
+    # Generate dataset
     dataset = load_full_dataset(PRIZE_TICKERS)
     
     if not dataset.empty:
-        print("\nSuccess! Dataset generated. Run baseline_fit.py next for Wilmott plot.")
+        print("\nSuccess! Dataset generated. Run baseline_fit.py for Wilmott plot.")
     else:
-        print("Error: Empty dataset — check yfinance installs/connections.")
+        print("Error: Empty dataset — try upgrading yfinance: pip install yfinance --upgrade")
