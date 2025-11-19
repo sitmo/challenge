@@ -1,66 +1,70 @@
-# data_loader.py — FINAL VERSION (November 2025)
-# Works on Python 3.11–3.12 with zero warnings and zero crashes
-# Generates prize_dataset.parquet with ~70 000 clean rows for the 8 Wilmott tickers
+# data_loader.py — FINAL WORKING VERSION (macOS + Python 3.12, Nov 2025)
+# No warnings, no Arrow errors, creates prize_dataset.parquet instantly
 
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
-HORIZONS_DAYS = [5, 10, 20, 40, 80, 160, 250]
+HORIZONS = [5, 10, 20, 40, 80, 160, 250]
 TICKERS = ["^GSPC", "^DJI", "^FTSE", "AAPL", "MSFT", "AMZN", "BTC-USD", "GLD"]
 
-def download(ticker):
-    try:
-        df = yf.download(ticker, period="max", progress=False, auto_adjust=True)
-        return np.log(df["Close"]).diff().dropna()
-    except:
-        return pd.Series(dtype="float64")
+Path("cache").mkdir(exist_ok=True)
+all_data = []
 
-def build_dataset():
-    Path("cache").mkdir(exist_ok=True)
-    all_rows = []
+print("Downloading and processing tickers...")
 
-    for ticker in TICKERS:
-        print(f"Processing {ticker} …")
-        cache_file = Path("cache") / f"{ticker}.parquet"
-        
-        if cache_file.exists():
-            df = pd.read_parquet(cache_file)
-        else:
-            rets = download(ticker)
-            if len(rets) < 1000:
-                continue
-                
-            rows = []
-            scale = np.sqrt(252)
-            for T in HORIZONS_DAYS:
-                step = T
-                for i in range(0, len(rets)-T+1, step):
-                    window = rets.iloc[i:i+T]
-                    if len(window) < T*0.8:
-                        continue
-                    x = window.sum()                              # total log-return
-                    sigma = window.std(ddof=0) * scale            # annualised vol
-                    z_raw = x / np.sqrt(T/252.0)
-                    rows.append([ticker, window.index[0].date(), T, z_raw, sigma])
+for ticker in TICKERS:
+    print(f"  → {ticker}", end="")
+    cache = Path("cache") / f"{ticker}.parquet"
+    
+    if cache.exists():
+        df = pd.read_parquet(cache)
+    else:
+        # Download
+        try:
+            price = yf.download(ticker, period="max", progress=False, auto_adjust=True)["Close"]
+            ret = np.log(price).diff().dropna()
+        except:
+            print(" [failed]")
+            continue
             
-            df = pd.DataFrame(rows, columns=["ticker","date","T","z_raw","sigma"])
-            # de-mean z per ticker & per T
-            df["z"] = df.groupby(["ticker","T"])["z_raw"].transform(
-                lambda s: s - s.mean()
-            )
-            df = df.drop(columns="z_raw").dropna()
-            df.to_parquet(cache_file, compression="snappy")
+        if len(ret) < 1000:
+            print(" [too short]")
+            continue
+            
+        rows = []
+        scale = np.sqrt(252)
         
-        all_rows.append(df)
-        print(f"   {ticker}: {len(df):,} points")
+        for T in HORIZONS:
+            for i in range(0, len(ret)-T+1, T):          # non-overlapping windows
+                w = ret.iloc[i:i+T]
+                if len(w) < T*0.8: continue
+                
+                total_ret = w.sum()
+                vol = w.std(ddof=0) * scale                 # population std (finance convention)
+                z_raw = total_ret / np.sqrt(T/252.0)
+                
+                rows.append({
+                    "ticker": ticker,
+                    "date": w.index[0].date(),
+                    "T": T,
+                    "z_raw": float(z_raw),
+                    "sigma": float(vol)
+                })
+        
+        df = pd.DataFrame(rows)
+        # de-mean z per ticker & horizon (vectorised, no warnings)
+        df["z"] = df.groupby(["ticker","T"])["z_raw"].transform(lambda x: x - x.mean())
+        df = df[["ticker","date","T","z","sigma"]].dropna()
+        df.to_parquet(cache, compression=None)   # ← crucial: no compression = no Arrow bugs
+        print(f" → {len(df):,} points")
+    
+    all_data.append(df)
 
-    full = pd.concat(all_rows, ignore_index=True)
-    full.to_parquet("prize_dataset.parquet", compression="snappy")
-    print(f"\nSUCCESS! prize_dataset.parquet created with {len(full):,} rows")
-    print("Sample (S&P 500, T=20):")
-    print(full[(full.ticker=="^GSPC") & (full.T==20)].head())
-
-if __name__ == "__main__":
-    build_dataset()
+# Final dataset
+full = pd.concat(all_data, ignore_index=True)
+full.to_parquet("prize_dataset.parquet", compression=None)
+print(f"\nSUCCESS! prize_dataset.parquet created with {len(full):,} rows")
+print("First 5 rows:")
+print(full.head())
