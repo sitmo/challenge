@@ -16,7 +16,8 @@ def compute_qvar_score(df_dict, submission_name, author="Anonymous"):
     Returns a score dictionary
     """
     results = []
-    required_T = [5,10,20,40,80,160,250]  # exact horizons from article
+    # required_T = [5,10,20,40,80,160,250]  # horizons from article
+    required_T = 5*(np.arange(26)+1) # 1 to 26 weeks
 
     for ticker, df in df_dict.items():
         for T in required_T:
@@ -27,8 +28,9 @@ def compute_qvar_score(df_dict, submission_name, author="Anonymous"):
             z = subset['z'].values
             sigma = subset['sigma'].values
 
-            # Bin exactly as in Wilmott article
-            bins = pd.cut(z, bins=np.linspace(z.min(), z.max(), 21))
+            # Bin as in article
+            #bins = pd.cut(z, bins=np.linspace(z.min(), z.max(), 21))
+            bins = np.linspace(-0.5, 0.5, 25)
             binned = pd.DataFrame({'z': z, 'sigma': sigma, 'bin': bins})
             avg = binned.groupby('bin').agg({'z': 'mean', 'sigma': 'mean'}).dropna()
 
