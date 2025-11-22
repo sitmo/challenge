@@ -10,13 +10,12 @@ Here z = x/sqrt(T) where x is the log price change over a period T, adjusted for
 Quantum baseline (Orrell 2025): R² ≈ 0.998. Uses two parameters, σ₀ and a small horizontal offset
 
 Repository contains:
-- Data set (dataset.parquet) containing price data for 352 stocks from the S&P 500 (stocks with less than 25 years of data were not included)
+- Data set (dataset.parquet) in three parts containing price data for 352 stocks from the S&P 500 (stocks with less than 25 years of data were not included)
 - Full dataset generator (data_loader.py) to show how the data was generated
 - Scoring engine
 - Live leaderboard
 - Baseline quantum fit
 - Plot Figure_1.png showing q-variance and R^2 value
-- Plot Figure_2.png showing the first 100 stocks.
 
 For example, to try a rough vol model, simulate paths with dV_t = -κ V_t dt + σ V_t^γ dW_t (γ=0.1), compute sigma(z) for each window, output new Parquet.
 
