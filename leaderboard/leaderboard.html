@@ -46,16 +46,18 @@
             const body = document.getElementById('table-body');
             body.innerHTML = '<tr><td colspan="7" class="loading">Fetching submissions...</td></tr>';
             
-            // Fallback hardcoded rows (if API fails)
+            // Fallback hardcoded rows (always show these)
             const fallbackRows = [
                 { name: 'Quantum Baseline', author: 'David Orrell', r2: 0.9528, params: 1, status: 'Passed', date: '2025-07-01' },
                 { name: 'Grok Rough Vol', author: 'Grok (xAI)', r2: 0.8545, params: 4, status: 'Failed', date: '2025-11-21' }
             ];
             
             try {
-                // Fetch submissions folder via GitHub API
-                const response = await fetch('https://api.github.com/repos/q-variance/challenge/contents/submissions?ref=main');
-                if (!response.ok) throw new Error('API failed');
+                // Fetch submissions folder via GitHub API (with user-agent to avoid rate limit)
+                const response = await fetch('https://api.github.com/repos/q-variance/challenge/contents/submissions?ref=main', {
+                    headers: { 'User-Agent': 'Leaderboard Viewer' }
+                });
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
                 const dirs = await response.json();
                 
                 const submissions = [];
@@ -65,12 +67,14 @@
                     const subName = dir.name;
                     
                     // Fetch README.md
-                    const readmeResponse = await fetch(`https://api.github.com/repos/q-variance/challenge/contents/submissions/${subName}/README.md?ref=main`);
+                    const readmeResponse = await fetch(`https://api.github.com/repos/q-variance/challenge/contents/submissions/${subName}/README.md?ref=main`, {
+                        headers: { 'User-Agent': 'Leaderboard Viewer' }
+                    });
                     if (!readmeResponse.ok) continue;
                     const readme = await readmeResponse.json();
                     const readmeContent = atob(readme.content);
                     
-                    // Parse R² and params from README (simple regex)
+                    // Parse R² and params (simple regex)
                     const r2Match = readmeContent.match(/R²[:\s]*([0-9.]+)/i);
                     const paramsMatch = readmeContent.match(/Params[:\s]*([0-9]+)/i);
                     const r2 = r2Match ? parseFloat(r2Match[1]) : 0;
@@ -80,7 +84,7 @@
                         name: subName,
                         r2: r2,
                         params: params,
-                        date: readme.sha.substring(0,10)  # Use commit hash as date proxy
+                        date: readme.sha.substring(0,10)
                     });
                 }
                 
@@ -92,10 +96,14 @@
                     return;
                 }
                 
-                renderTable(submissions);
+                // Combine fallback and fetched
+                const allRows = [...fallbackRows, ...submissions];
+                allRows.sort((a, b) => b.r2 - a.r2);
+                
+                renderTable(allRows);
             } catch (error) {
                 console.error('Load error:', error);
-                body.innerHTML = '<tr><td colspan="7" class="error">API error—using fallback data.</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" class="error">API error—using fallback data. Check console for details.</td></tr>';
                 renderTable(fallbackRows);
             }
         }
