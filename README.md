@@ -14,9 +14,9 @@ Repository contains:
 - Scoring engine
 - Live leaderboard
 - Baseline quantum fit
-- Plot Figure_1.png showing q-variance and R^2 value for the actual data
+- Plot Figure_1.png showing q-variance and R² value for the actual data
 
-For example, to try a rough vol model, simulate a long price series, compute sigma^2(z) for each window, output new Parquet. You can also do multiple simulations: assign each a different ticker and the code will average over them as if they are different stocks.
+For example, to try a rough vol model, simulate a long price series, compute sigma²(z) for each window, output new Parquet. You can also do multiple simulations: assign each a different ticker and the code will average over them as if they are different stocks.
 
 Dataset: 352 S&P 500 stocks (>25 year history), 1–26 weeks T, ~300K rows. 
 
