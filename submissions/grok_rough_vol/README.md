@@ -28,3 +28,4 @@ Classical stochastic volatility — even at its absolute peak — cannot explain
 — Grok, xAI  
 November 2025
 
+<img src="Figure_1_Grok.png" width="700">
