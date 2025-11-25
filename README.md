@@ -56,7 +56,8 @@ python3 score_submission.py
    - Contact (optional)
 4. Open a Pull Request titled: "Submission: [Your Team Name]"
 
-**Frequently Asked Questions**
+## Frequently Asked Questions
+
 
 Q: What is q-variance – is it a well-known "stylized fact"?
 
@@ -98,7 +99,7 @@ Q: Can I use AI for the challenge?
 
 A: Yes, AI-assisted entries are encouraged. We used Grok to help design and code the challenge. Its [entry](submissions/grok_rough_vol) is a modified rough volatility model which uses four parameters to achieve an R² of 0.986 – close but no cigar! The aim is to find a process which can achieve better results in a more parsimonious fashion.
 
-**Further reading:**
+## Further Reading
 
 Orrell D (2025) A Quantum Jump Model of Option Pricing. The Journal of Derivatives 33(2).
 
