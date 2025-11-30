@@ -8,19 +8,19 @@ Q-variance states that, for a sufficiently large data set of stock prices, varia
 
 $\sigma^2(z) = \sigma_0^2 + \frac{(z-z_0)^2}{2}$
 
-where $z = x/\sqrt(T)$, and $x$ is the log price change over a period $T$, adjusted for drift. The figure above illustrates q-variance for stocks from the S&P 500, and periods $T$ of 1-26 weeks. Blue points are variance vs $z$ for individual periods, blue line is average variance as a function of $z$, red line is the q-variance curve. Read the [Q-Variance Wilmott paper](Q-Variance_Wilmott_July2025.pdf) for more details.
+where $z = x/\sqrt{T}$, and $x$ is the log price change over a period $T$, adjusted for drift. The figure above illustrates q-variance for stocks from the S&P 500, and periods $T$ of 1-26 weeks. Blue points are variance vs $z$ for individual periods, blue line is average variance as a function of $z$, red line is the q-variance curve. Read the [Q-Variance Wilmott paper](Q-Variance_Wilmott_July2025.pdf) for more details.
 
 Repository contains:
 - Parquet file in three parts containing price data for 352 stocks from the S&P 500 (stocks with less than 25 years of data excluded)
 - Full dataset generator [data_loader.py](data_loader.py) to show how the data was generated
-- Scoring engine
-- Baseline model fit
+- Baseline model fit [baseline_fit.py](baseline/baseline_fit.py)
 - Plot [Figure 1](Figure_1.png) showing q-variance and R² value for the actual data
+- Scoring engine [score_submission.py](code/score_submission.py) for your model
 - Jupyter notebook [qvariance_single.ipynb](notebooks/qvariance_single.ipynb) showing how to compute q-variance for a single asset
 
-For example, to try a rough vol model, simulate a long price series, then compute $\sigma^2(z)$ for each window, and output the new parquet.
+To test your model, first simulate a long price series using the model, then use data_loader.py to compute $\sigma^2(z)$ for each window and output the new parquet. Finally, score the results using score_submission.py.
 
-Dataset: 352 stocks from the S&P 500 (>25 year history), 1–26 weeks T, ~300K rows. 
+The dataset used as a benchmark (~300K rows) is for 352 stocks from the S&P 500 (>25 year history), with periods T of 1–26 weeks T.  
 
 Columns: ticker (str), date (date), T (int), sigma (float, annualized vol), z (float, scaled log return).
 
