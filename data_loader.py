@@ -6,9 +6,6 @@ from pathlib import Path
 
 HORIZONS = 5*(np.arange(26)+1)   # does 1 to 26 weeks, can also do [5, 10, 20, 40, 80, 160]
 
-#TICKERS = ["^GSPC", "^DJI", "^FTSE", "AAPL", "MSFT", "AMZN", "JPM", "PG"]  # BTC-USD
-#TICKERS = ["MMM", "LLY", "AXP", "AAPL", "MSFT", "AMZN", "JPM", "PG"]  # BTC-USD
-
 TICKERS = ["A" , "AAPL", "ABT", "ACGL","ADBE" , "ADI" , "ADM" , "ADP" , "ADSK" , "AEE" , "AEP" ,
 "AES" , "AFL" , "AIG" , "AJG" , "AKAM" , "ALB" , "ALL" , "AMAT" , "AMD" , "AME" , "AMGN",
  "AMT" , "AMZN" , "AON" , "AOS" , "APA" , "APD" , "APH" , "ARE" , "ATO" , "AVB",  
@@ -44,10 +41,7 @@ TICKERS = ["A" , "AAPL", "ABT", "ACGL","ADBE" , "ADI" , "ADM" , "ADP" , "ADSK" ,
 "XOM" , "YUM" , "ZBRA"]
 ntick = len(TICKERS)
 
-# no data for "ANSS", "HES", "JNPR", "WBA"
-
-# GSPC data from 1927-12-30, DJI from 1992-01-02, MSFT from 1986-03-13
-Path("cache").mkdir(exist_ok=True)
+# Path("cache").mkdir(exist_ok=True)
 all_data = []
 
 print("Generating Q-Variance Challenge Dataset...")
@@ -105,7 +99,6 @@ for ticker in TICKERS:
     df = df.drop(columns="z_raw")
     df = df.dropna().reset_index(drop=True)  # Final clean
 
-    df.to_parquet(Path("cache") / f"{ticker}.parquet")
     print(f" → {len(df)} clean windows")
     all_data.append(df)
 
