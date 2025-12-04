@@ -1,4 +1,4 @@
-# data_loader.py
+# data_loader.py - read price data for stocks in S&P 500 and save a parquet file
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -6,39 +6,8 @@ from pathlib import Path
 
 HORIZONS = 5*(np.arange(26)+1)   # does 1 to 26 weeks, can also do [5, 10, 20, 40, 80, 160]
 
-TICKERS = ["A" , "AAPL", "ABT", "ACGL","ADBE" , "ADI" , "ADM" , "ADP" , "ADSK" , "AEE" , "AEP" ,
-"AES" , "AFL" , "AIG" , "AJG" , "AKAM" , "ALB" , "ALL" , "AMAT" , "AMD" , "AME" , "AMGN",
- "AMT" , "AMZN" , "AON" , "AOS" , "APA" , "APD" , "APH" , "ARE" , "ATO" , "AVB",  
-"AVY" , "AXP" , "AZO" , "BA" , "BAC" , "BALL" , "BAX" , "BBY" , "BDX" , "BEN" , "BIIB",
-"BK" , "BKNG" , "BKR" , "BLK" , "BMY" , "BRO" , "BSX" , "BXP" , "C" , "CAG" , "CAH",
-"CAT" , "CB" , "CCI" , "CCL" , "CDNS" , "CHD" , "CHRW" , "CI" , "CINF" , "CL" , "CLX",  
-"CMCSA" , "CMI" , "CMS" , "CNP" , "COF" , "COO" , "COP" , "COR" , "COST" , "CPB" , "CPRT",
-"CPT" , "CSCO" , "CSGP" , "CSX" , "CTAS" , "CTRA" , "CTSH" , "CVS" , "CVX" , "D" , "DD",
-"DE" , "DECK" , "DGX" , "DHI" , "DHR" , "DIS" , "DLTR" , "DOC" , "DOV" , "DRI" , "DTE",
-"DUK" , "DVA" , "DVN" , "EA" , "EBAY" , "ECL" , "ED" , "EFX" , "EG" , "EIX" , "EL",
-"EMN" , "EMR" , "EOG" , "EQR" , "EQT" , "ERIE" , "ES" , "ESS" , "ETN" , "ETR" , "EVRG",
-"EW" , "EXC" , "EXPD" , "F" , "FAST" , "FCX" , "FDS" , "FDX" , "FE" , "FFIV" , "FI",
-"FICO" , "FITB" , "FRT" , "GD" , "GE" , "GEN" , "GILD" , "GIS" , "GL" , "GLW" , "GPC", 
-"GS" , "GWW" , "HAL" , "HAS" , "HBAN" , "HD"  , "HIG" , "HOLX" , "HON" , "HPQ",  
-"HRL" , "HSIC" , "HST" , "HSY" , "HUBB" , "HUM" , "IBM" , "IDXX" , "IEX" , "IFF" , "INCY",
-"INTC" , "INTU" , "IP" , "IPG" , "IRM" , "IT" , "ITW" , "IVZ" , "J" , "JBHT" , "JBL",
- "JCI" , "JKHY" , "JNJ" , "JPM" , "K" , "KEY" , "KIM" , "KLAC" , "KMB" , "KMX",  
- "KO" , "KR" , "L" , "LEN" , "LH" , "LHX" , "LII" , "LIN" , "LLY" , "LMT" , "LNT",
- "LOW" , "LRCX" , "LUV" , "MAA" , "MAR" , "MAS" , "MCD" , "MCHP" , "MCK" , "MCO" , "MDT",
- "MET" , "MGM" , "MHK" , "MKC" , "MLM" , "MMC" , "MMM" , "MNST" , "MO" , "MOS" , "MRK",
-"MS" , "MSFT" , "MSI" , "MTB" , "MTCH" , "MTD" , "MU" , "NDSN" , "NEE" , "NEM" , "NI",
-"NKE" , "NOC" , "NSC" , "NTAP" , "NTRS" , "NUE" , "NVDA" , "NVR" , "O" , "ODFL" , "OKE",
-"OMC" , "ORCL" , "ORLY" , "OXY" , "PAYX" , "PCAR" , "PCG" , "PEG" , "PEP" , "PFE" , "PG", 
- "PGR" , "PH" , "PHM" , "PKG" , "PLD" , "PNC" , "PNR" , "PNW" , "POOL" , "PPG" , "PPL",
- "PSA" , "PTC" , "PWR" , "QCOM" , "RCL" , "REG" , "REGN" , "RF" , "RJF" , "RL" , "RMD",
-"ROK" , "ROL" , "ROP" , "ROST" , "RSG" , "RTX" , "RVTY" , "SBAC" , "SBUX" , "SCHW" , "SHW",
- "SJM" , "SLB" , "SNA" , "SNPS" , "SO" , "SPG" , "SPGI" , "SRE" , "STE" , "STLD" , "STT",
-"STZ" , "SWK" , "SWKS" , "SYK" , "SYY" , "T" , "TAP" , "TDY" , "TECH" , "TER" , "TFC",
- "TGT" , "TJX" , "TKO" , "TMO" , "TPL" , "TRMB" , "TROW" , "TRV" , "TSCO" , "TSN" , "TT", 
-"TTWO" , "TXN" , "TXT" , "TYL" , "UDR" , "UHS" , "UNH" , "UNP" , "UPS" , "URI" , "USB",
-"VLO" , "VMC" , "VRSN" , "VRTX" , "VTR" , "VTRS" , "VZ" , "WAB" , "WAT" , "WDC",   
-"WEC" , "WELL" , "WFC" , "WM" , "WMB" , "WMT" , "WRB" , "WSM" , "WST" , "WY" , "XEL",
-"XOM" , "YUM" , "ZBRA"]
+# from R: l.out <- BatchGetSymbols(tickers=tickers,first.date=as.Date('1950-01-01'),last.date=as.Date('2025-12-03'),thresh.bad.data=0.25)# stocks with at least 0.25 of dates since 1950, so about 19 years of data
+TICKERS = ["MMM", "AOS", "ABT", "ACN", "ADBE", "AMD", "AES", "AFL", "A", "APD", "AKAM", "ALB", "ARE",              "ALGN", "LNT", "ALL", "GOOGL", "GOOG", "MO", "AMZN", "AEE", "AEP", "AXP", "AIG", "AMT",              "AMP", "AME", "AMGN", "APH", "ADI", "AON", "APA", "AAPL", "AMAT", "ACGL", "ADM", "AJG",              "AIZ", "T", "ATO", "ADSK", "ADP", "AZO", "AVB", "AVY", "AXON", "BKR", "BALL", "BAC", "BAX",              "BDX", "BBY", "TECH", "BIIB", "BLK", "BK", "BA", "BKNG", "BSX", "BMY", "BRO", "BLDR", "BG",              "BXP", "CHRW", "CDNS", "CPT", "CPB", "COF", "CAH", "CCL", "CAT", "CBRE", "COR", "CNC", "CNP",              "CF", "CRL" , "SCHW", "CVX", "CMG", "CB", "CHD", "CI", "CINF", "CTAS", "CSCO", "C", "CLX",              "CME", "CMS" , "KO", "CTSH", "CL", "CMCSA", "CAG", "COP", "ED", "STZ", "COO", "CPRT", "GLW",              "CSGP", "COST", "CTRA", "CCI", "CSX", "CMI", "CVS", "DHR", "DRI", "DVA", "DECK", "DE", "DVN",              "DXCM", "DLR", "DLTR", "D", "DPZ", "DOV", "DHI", "DTE", "DUK", "DD", "ETN", "EBAY", "ECL",              "EIX", "EW", "EA", "ELV", "EME", "EMR", "ETR", "EOG", "EQT", "EFX", "EQIX", "EQR", "ERIE",              "ESS", "EL", "EG", "EVRG", "ES", "EXC", "EXPE", "EXPD", "EXR", "XOM", "FFIV", "FDS", "FICO",              "FAST", "FRT", "FDX", "FIS", "FITB", "FSLR", "FE", "FISV", "F", "BEN", "FCX", "GRMN", "IT",              "GE", "GEN", "GD", "GIS", "GPC", "GILD", "GPN", "GL", "GS", "HAL", "HIG", "HAS", "DOC",              "HSIC", "HSY", "HOLX", "HD", "HON", "HRL", "HST", "HPQ", "HUBB", "HUM", "HBAN", "IBM", "IEX",              "IDXX", "ITW", "INCY", "INTC", "ICE", "IFF", "IP", "INTU", "ISRG", "IVZ", "IRM", "JBHT", "JBL",              "JKHY", "J", "JNJ", "JCI", "JPM", "K", "KEY", "KMB", "KIM", "KLAC", "KR", "LHX", "LH", "LRCX",              "LVS", "LDOS", "LEN", "LII", "LLY", "LIN", "LYV", "LKQ", "LMT", "L", "LOW", "MTB", "MAR",              "MMC", "MLM", "MAS", "MA", "MTCH", "MKC", "MCD", "MCK", "MDT", "MRK", "MET", "MTD", "MGM",              "MCHP", "MU", "MSFT", "MAA", "MHK", "MOH", "TAP", "MDLZ", "MPWR", "MNST", "MCO", "MS", "MOS",              "MSI", "NDAQ", "NTAP", "NFLX", "NEM", "NEE", "NKE", "NI", "NDSN", "NSC", "NTRS", "NOC", "NRG",              "NUE", "NVDA", "NVR", "ORLY", "OXY", "ODFL", "OMC", "ON", "OKE", "ORCL", "PCAR", "PKG",              "PSKY", "PH", "PAYX", "PNR", "PEP", "PFE", "PCG", "PNW", "PNC", "POOL", "PPG", "PPL", "PFG",              "PG", "PGR", "PLD", "PRU", "PEG", "PTC", "PSA", "PHM", "PWR", "QCOM", "DGX", "RL", "RJF",              "RTX", "O", "REG", "REGN", "RF", "RSG", "RMD", "RVTY", "ROK", "ROL", "ROP", "ROST", "RCL",              "SPGI", "CRM", "SBAC", "SLB", "STX", "SRE", "SHW", "SPG", "SWKS", "SJM", "SNA", "SO", "LUV",              "SWK", "SBUX", "STT", "STLD", "STE", "SYK", "SNPS", "SYY", "TROW", "TTWO", "TPR", "TGT",              "TDY", "TER", "TXN", "TPL", "TXT", "TMO", "TJX", "TKO", "TSCO", "TT", "TDG", "TRV", "TRMB",              "TFC", "TYL", "TSN", "USB", "UDR", "UNP", "UAL", "UPS", "URI", "UNH", "UHS", "VLO", "VTR",              "VRSN", "VZ", "VRTX", "VTRS", "VMC", "WRB", "GWW", "WAB", "WMT", "DIS", "WBD", "WM", "WAT",              "WEC", "WFC", "WELL", "WST", "WDC", "WY", "WSM", "WMB", "WTW", "WYNN", "XEL", "YUM", "ZBRA", "ZBH"]
 ntick = len(TICKERS)
 
 # Path("cache").mkdir(exist_ok=True)
@@ -95,6 +64,7 @@ for ticker in TICKERS:
     df = df.drop(columns="z_raw")
     df = df.dropna().reset_index(drop=True)  # Final clean
 
+    #df.to_parquet(Path("cache") / f"{ticker}.parquet")
     print(f" → {len(df)} clean windows")
     all_data.append(df)
 
