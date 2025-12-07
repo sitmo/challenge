@@ -1,4 +1,4 @@
-# Q-Variance Challenge
+# The WILMOTT Q-Variance Challenge
 
 <img src="Figure_1.png" width="800">
 
@@ -10,9 +10,15 @@ $\sigma^2(z) = \sigma_0^2 + \frac{(z-z_0)^2}{2}$
 
 where $z = x/\sqrt{T}$, and $x$ is the log price change over the period, adjusted for drift (the parameter $z_0$ accounts for small asymmetries). The figure above illustrates q-variance for stocks from the S&P 500, and periods $T$ of 1-26 weeks. Blue points are variance vs $z$ for individual periods, blue line is average variance as a function of $z$, red line is the q-variance curve. 
 
-Q-variance affects everything from option pricing to how we measure and talk about volatility. Read the [Q-Variance Wilmott article](Q-Variance_Wilmott_July2025.pdf) for more details and examples.
+Q-variance affects everything from option pricing to how we measure and talk about volatility. Read the [Q-Variance WILMOTT article](Q-Variance_Wilmott_July2025.pdf) for more details and examples.
 
 To take part in the challenge, use your model to produce a long time series of simulated price data, and score it as described below.
+
+**Prize:** One-year subscription to WILMOTT magazine and publication of the technique.
+
+**Closing Date:** None.
+
+Email admin@wilmott.com if you have any questions.
 
 ## Repository Contents
 
@@ -85,7 +91,7 @@ A: Yes, it implies that price-change follows the q-distribution which is a parti
 
 Q: Why should I enter this competition?
 
-A: For fun, an intellectual challenge, kudos, to defend the honour of classical finance ... but also because, if your existing model of price behaviour doesn't do q-variance, then it is missing important market structure.
+A: For fun, the awesome prizes, an intellectual challenge, kudos, to defend the honour of classical finance ... but also because, if your existing model of price behaviour doesn't do q-variance, then it is missing important market structure.
 
 Q: Can I use AI for the challenge?
 
